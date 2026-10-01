@@ -22,6 +22,7 @@ type Config struct {
 	OIDCRedirectURL     string
 	OIDCGroupsClaim     string
 	OIDCRoleMapping     map[string]string
+	OIDCCAFile          string
 	SessionTTL          time.Duration
 	CookieSecure        bool
 }
@@ -41,6 +42,7 @@ func Load() (Config, error) {
 		OIDCRedirectURL:     os.Getenv("OIDC_REDIRECT_URL"),
 		OIDCGroupsClaim:     env("OIDC_GROUPS_CLAIM", "groups"),
 		OIDCRoleMapping:     parseMapping(os.Getenv("OIDC_ROLE_MAPPING")),
+		OIDCCAFile:          os.Getenv("OIDC_CA_FILE"),
 		SessionTTL:          8 * time.Hour,
 		CookieSecure:        os.Getenv("CONSOLE_COOKIE_SECURE") == "true",
 	}

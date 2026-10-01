@@ -8,6 +8,8 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -15,6 +17,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -59,7 +62,11 @@ type jwk struct {
 
 func New(ctx context.Context, cfg config.Config, db *store.Store) (*Authenticator, error) {
 	_ = ctx
-	a := &Authenticator{cfg: cfg, store: db, http: &http.Client{Timeout: 10 * time.Second}}
+	httpClient, err := newHTTPClient(cfg.OIDCCAFile)
+	if err != nil {
+		return nil, fmt.Errorf("oidc tls: %w", err)
+	}
+	a := &Authenticator{cfg: cfg, store: db, http: httpClient}
 	if cfg.AuthMode != "oidc" {
 		return a, nil
 	}
@@ -81,6 +88,37 @@ func New(ctx context.Context, cfg config.Config, db *store.Store) (*Authenticato
 		return nil, errors.New("oidc discovery issuer does not match OIDC_ISSUER_URL")
 	}
 	return a, nil
+}
+
+func newHTTPClient(caFile string) (*http.Client, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	if caFile == "" {
+		return client, nil
+	}
+
+	caPEM, err := os.ReadFile(caFile)
+	if err != nil {
+		return nil, fmt.Errorf("read CA file %q: %w", caFile, err)
+	}
+	roots, err := x509.SystemCertPool()
+	if err != nil || roots == nil {
+		roots = x509.NewCertPool()
+	}
+	if !roots.AppendCertsFromPEM(caPEM) {
+		return nil, fmt.Errorf("CA file %q does not contain a valid PEM certificate", caFile)
+	}
+
+	transport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return nil, errors.New("default HTTP transport is not a *http.Transport")
+	}
+	transport = transport.Clone()
+	transport.TLSClientConfig = &tls.Config{
+		RootCAs:    roots,
+		MinVersion: tls.VersionTLS12,
+	}
+	client.Transport = transport
+	return client, nil
 }
 
 func (a *Authenticator) LoginLocal(ctx context.Context, email, password string) (string, User, error) {

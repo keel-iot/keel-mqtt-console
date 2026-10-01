@@ -1,6 +1,10 @@
 package auth
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestPasswordHashRoundTrip(t *testing.T) {
 	hash, err := hashPassword("correct horse battery staple")
@@ -23,5 +27,15 @@ func TestValidateRole(t *testing.T) {
 	}
 	if ValidateRole("root") {
 		t.Fatal("unexpected role accepted")
+	}
+}
+
+func TestHTTPClientRejectsInvalidCA(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ca.crt")
+	if err := os.WriteFile(path, []byte("not a certificate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := newHTTPClient(path); err == nil {
+		t.Fatal("expected invalid CA to fail")
 	}
 }

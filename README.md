@@ -45,6 +45,10 @@ export OIDC_ROLE_MAPPING='keel-console-viewer=viewer,keel-console-operator=opera
 The OIDC client must allow the exact redirect URL. The console validates issuer,
 audience, expiry and the signing key from the provider's JWKS endpoint.
 
+For an OIDC provider using an internal or self-signed CA, set `OIDC_CA_FILE`
+to a PEM bundle. The CA is added to the system trust store; certificate
+verification is not disabled.
+
 ## Docker
 
 ```sh

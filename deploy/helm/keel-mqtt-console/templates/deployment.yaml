@@ -17,6 +17,9 @@
 {{- if or (eq .Values.oidc.issuerURL "") (eq .Values.oidc.clientID "") (eq .Values.oidc.redirectURL "") (eq .Values.oidc.existingSecret "") (eq .Values.oidc.roleMapping "") }}
 {{- fail "oidc.issuerURL, oidc.clientID, oidc.redirectURL, oidc.existingSecret and oidc.roleMapping are required for oidc auth" }}
 {{- end }}
+{{- if and .Values.oidc.ca.existingConfigMap .Values.oidc.ca.certificate }}
+{{- fail "configure either oidc.ca.existingConfigMap or oidc.ca.certificate, not both" }}
+{{- end }}
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment
@@ -36,12 +39,27 @@ spec:
     spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if and (eq .Values.auth.mode "oidc") (or .Values.oidc.ca.existingConfigMap .Values.oidc.ca.certificate) }}
+      volumes:
+        - name: oidc-ca
+          configMap:
+            name: {{ if .Values.oidc.ca.existingConfigMap }}{{ .Values.oidc.ca.existingConfigMap }}{{ else }}{{ include "console.fullname" . }}-oidc-ca{{ end }}
+            items:
+              - key: {{ .Values.oidc.ca.configMapKey }}
+                path: ca.crt
+      {{- end }}
       containers:
         - name: console
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- if and (eq .Values.auth.mode "oidc") (or .Values.oidc.ca.existingConfigMap .Values.oidc.ca.certificate) }}
+          volumeMounts:
+            - name: oidc-ca
+              mountPath: /etc/keel-mqtt-console/oidc-ca
+              readOnly: true
+          {{- end }}
           ports:
             - name: http
               containerPort: 8080
@@ -91,6 +109,10 @@ spec:
               value: {{ .Values.oidc.groupsClaim | quote }}
             - name: OIDC_ROLE_MAPPING
               value: {{ .Values.oidc.roleMapping | quote }}
+            {{- if or .Values.oidc.ca.existingConfigMap .Values.oidc.ca.certificate }}
+            - name: OIDC_CA_FILE
+              value: /etc/keel-mqtt-console/oidc-ca/ca.crt
+            {{- end }}
           {{- end }}
           readinessProbe:
             httpGet:

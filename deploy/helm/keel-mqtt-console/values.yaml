@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: ghcr.io/keel-iot/keel-mqtt-console
-  tag: "v0.1.1"
+  tag: "v0.1.2"
   pullPolicy: IfNotPresent
 
 service:
@@ -42,6 +42,12 @@ oidc:
   redirectURL: ""
   groupsClaim: groups
   roleMapping: ""
+  # Optional custom CA for private/self-signed OIDC endpoints. The CA is
+  # mounted into the pod and used without disabling TLS verification.
+  ca:
+    existingConfigMap: ""
+    configMapKey: ca.crt
+    certificate: ""
 
 ingress:
   enabled: false

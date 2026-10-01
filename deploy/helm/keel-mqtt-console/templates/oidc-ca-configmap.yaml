@@ -1,0 +1,11 @@
+{{- if and (eq .Values.auth.mode "oidc") .Values.oidc.ca.certificate }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "console.fullname" . }}-oidc-ca
+  labels:
+    {{- include "console.labels" . | nindent 4 }}
+data:
+  {{ .Values.oidc.ca.configMapKey }}: |
+{{ .Values.oidc.ca.certificate | nindent 4 }}
+{{- end }}
