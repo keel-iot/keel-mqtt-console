@@ -32,7 +32,9 @@ func New(cfg config.Config, a *auth.Authenticator, b *broker.Client, s *store.St
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
-	mux.HandleFunc("GET /", s.index)
+	// Use an exact root pattern. With Go's method-aware ServeMux patterns,
+	// "GET /" conflicts with the method-agnostic /api/broker/ subtree.
+	mux.HandleFunc("GET /{$}", s.index)
 	mux.HandleFunc("GET /auth/login", s.login)
 	mux.HandleFunc("GET /auth/config", s.authConfig)
 	mux.HandleFunc("POST /auth/login", s.loginLocal)
