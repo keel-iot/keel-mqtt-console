@@ -1,9 +1,13 @@
 package auth
 
 import (
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/keel-iot/keel-mqtt-console/internal/config"
 )
 
 func TestPasswordHashRoundTrip(t *testing.T) {
@@ -37,5 +41,29 @@ func TestHTTPClientRejectsInvalidCA(t *testing.T) {
 	}
 	if _, err := newHTTPClient(path); err == nil {
 		t.Fatal("expected invalid CA to fail")
+	}
+}
+
+func TestStartOIDCRedirectsWithRequest(t *testing.T) {
+	a := &Authenticator{
+		cfg: config.Config{
+			AuthMode:        "oidc",
+			OIDCClientID:    "console",
+			OIDCRedirectURL: "https://console.example.test/auth/callback",
+			SessionSecret:   strings.Repeat("s", 32),
+		},
+		oidc: oidcMetadata{AuthorizationEndpoint: "https://id.example.test/authorize"},
+	}
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest("GET", "https://console.example.test/auth/login", nil)
+
+	if err := a.StartOIDC(recorder, request); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != 302 {
+		t.Fatalf("expected redirect, got %d", recorder.Code)
+	}
+	if !strings.HasPrefix(recorder.Header().Get("Location"), "https://id.example.test/authorize?") {
+		t.Fatalf("unexpected redirect location: %s", recorder.Header().Get("Location"))
 	}
 }

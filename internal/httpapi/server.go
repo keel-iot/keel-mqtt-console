@@ -64,7 +64,7 @@ func (s *Server) index(w http.ResponseWriter, _ *http.Request) {
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if s.cfg.AuthMode == "oidc" {
-		if err := s.auth.StartOIDC(w); err != nil {
+		if err := s.auth.StartOIDC(w, r); err != nil {
 			writeError(w, 500, err.Error())
 		}
 		return

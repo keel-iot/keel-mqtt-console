@@ -162,7 +162,7 @@ func (a *Authenticator) Logout(ctx context.Context, token string) error {
 	return a.store.DeleteSession(ctx, token)
 }
 
-func (a *Authenticator) StartOIDC(w http.ResponseWriter) error {
+func (a *Authenticator) StartOIDC(w http.ResponseWriter, r *http.Request) error {
 	if a.cfg.AuthMode != "oidc" {
 		return errors.New("oidc authentication is disabled")
 	}
@@ -188,7 +188,7 @@ func (a *Authenticator) StartOIDC(w http.ResponseWriter) error {
 	v.Set("nonce", nonce)
 	v.Set("code_challenge", pkceChallenge(verifier))
 	v.Set("code_challenge_method", "S256")
-	http.Redirect(w, nil, a.oidc.AuthorizationEndpoint+"?"+v.Encode(), http.StatusFound)
+	http.Redirect(w, r, a.oidc.AuthorizationEndpoint+"?"+v.Encode(), http.StatusFound)
 	return nil
 }
 
