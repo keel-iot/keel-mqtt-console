@@ -1,0 +1,108 @@
+{{- if not (or (eq .Values.auth.mode "local") (eq .Values.auth.mode "oidc")) }}
+{{- fail "auth.mode must be local or oidc" }}
+{{- end }}
+{{- if eq .Values.broker.managementURL "" }}
+{{- fail "broker.managementURL is required" }}
+{{- end }}
+{{- if and (eq .Values.database.existingSecret "") (eq .Values.database.url "") }}
+{{- fail "database.existingSecret or database.url is required" }}
+{{- end }}
+{{- if and (eq .Values.session.existingSecret "") (eq .Values.session.secret "") }}
+{{- fail "session.existingSecret or session.secret is required" }}
+{{- end }}
+{{- if and (eq .Values.auth.mode "local") (eq .Values.local.bootstrapExistingSecret "") }}
+{{- fail "local.bootstrapExistingSecret is required for local auth" }}
+{{- end }}
+{{- if eq .Values.auth.mode "oidc" }}
+{{- if or (eq .Values.oidc.issuerURL "") (eq .Values.oidc.clientID "") (eq .Values.oidc.redirectURL "") (eq .Values.oidc.existingSecret "") (eq .Values.oidc.roleMapping "") }}
+{{- fail "oidc.issuerURL, oidc.clientID, oidc.redirectURL, oidc.existingSecret and oidc.roleMapping are required for oidc auth" }}
+{{- end }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "console.fullname" . }}
+  labels:
+    {{- include "console.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "console.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "console.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: console
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: CONSOLE_ADDR
+              value: ":8080"
+            - name: CONSOLE_AUTH_MODE
+              value: {{ .Values.auth.mode | quote }}
+            - name: BROKER_MANAGEMENT_URL
+              value: {{ .Values.broker.managementURL | quote }}
+            - name: CONSOLE_COOKIE_SECURE
+              value: {{ .Values.session.cookieSecure | quote }}
+            - name: CONSOLE_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if .Values.database.existingSecret }}{{ .Values.database.existingSecret }}{{ else }}{{ include "console.fullname" . }}-config{{ end }}
+                  key: {{ .Values.database.existingSecretKey }}
+            - name: CONSOLE_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if .Values.session.existingSecret }}{{ .Values.session.existingSecret }}{{ else }}{{ include "console.fullname" . }}-config{{ end }}
+                  key: {{ .Values.session.existingSecretKey }}
+          {{- if eq .Values.auth.mode "local" }}
+            - name: CONSOLE_BOOTSTRAP_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.local.bootstrapExistingSecret }}
+                  key: {{ .Values.local.emailKey }}
+            - name: CONSOLE_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.local.bootstrapExistingSecret }}
+                  key: {{ .Values.local.passwordKey }}
+          {{- else }}
+            - name: OIDC_ISSUER_URL
+              value: {{ .Values.oidc.issuerURL | quote }}
+            - name: OIDC_CLIENT_ID
+              value: {{ .Values.oidc.clientID | quote }}
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.oidc.existingSecret }}
+                  key: {{ .Values.oidc.clientSecretKey }}
+            - name: OIDC_REDIRECT_URL
+              value: {{ .Values.oidc.redirectURL | quote }}
+            - name: OIDC_GROUPS_CLAIM
+              value: {{ .Values.oidc.groupsClaim | quote }}
+            - name: OIDC_ROLE_MAPPING
+              value: {{ .Values.oidc.roleMapping | quote }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

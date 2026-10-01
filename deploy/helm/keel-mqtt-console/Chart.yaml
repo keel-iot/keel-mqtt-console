@@ -1,0 +1,6 @@
+apiVersion: v2
+name: keel-mqtt-console
+description: Authenticated web console for Keel MQTT Gateway
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

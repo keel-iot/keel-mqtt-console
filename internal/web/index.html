@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Keel MQTT Console</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif}body{margin:0;background:#0f1319;color:#e7edf5}main{max-width:1280px;margin:0 auto;padding:28px}.panel,.card{background:#171d26;border:1px solid #293342;border-radius:10px;padding:18px}.login{max-width:390px;margin:12vh auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0}.value{font-size:28px;font-weight:700;margin-top:8px}.muted{color:#8d9aaa;font-size:13px}input,button{border-radius:6px;border:1px solid #39485a;background:#11161d;color:#eef;padding:10px;margin-top:8px;width:100%;box-sizing:border-box}button{cursor:pointer;background:#2d6cdf;border:0;font-weight:600}button.secondary{background:#364252}table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1px solid #293342;padding:9px;font-size:13px}th{color:#9aa8b8;text-transform:uppercase;font-size:11px}.hidden{display:none}.error{color:#ff9d9d;margin-top:10px}.top{display:flex;justify-content:space-between;align-items:center;gap:20px}.top button{width:auto;margin:0}.tabs{display:flex;gap:8px;margin:20px 0}.tabs button{width:auto}.section{margin-top:22px}
+  </style>
+</head>
+<body>
+<main>
+  <section id="login" class="panel login">
+    <h1>Keel MQTT Console</h1><p class="muted">Authenticated broker operations console</p>
+    <form id="login-form"><input id="email" type="email" placeholder="Email" autocomplete="username"><input id="password" type="password" placeholder="Password" autocomplete="current-password"><button>Sign in</button></form>
+    <button id="oidc" class="secondary hidden">Sign in with identity provider</button><p id="login-error" class="error"></p>
+  </section>
+  <section id="app" class="hidden">
+    <div class="top"><div><h1>Keel MQTT Console</h1><span id="who" class="muted"></span></div><button id="logout" class="secondary">Logout</button></div>
+    <div class="grid">
+      <div class="card"><span class="muted">Active connections</span><div id="connections" class="value">–</div></div>
+      <div class="card"><span class="muted">Messages/sec</span><div id="msg-rate" class="value">–</div></div>
+      <div class="card"><span class="muted">Total messages</span><div id="total-msg" class="value">–</div></div>
+      <div class="card"><span class="muted">Inflight QoS1/2</span><div id="inflight" class="value">–</div></div>
+    </div>
+    <div class="tabs"><button data-tab="clients">Clients</button><button data-tab="topics">Topics / Routing</button><button data-tab="acl">MQTT ACL</button></div>
+    <section id="clients" class="panel section"><h2>Connected clients</h2><table><thead><tr><th>Client</th><th>Node</th><th>Username</th><th>Remote</th><th>Subscriptions</th></tr></thead><tbody id="clients-body"></tbody></table></section>
+    <section id="topics" class="panel section hidden"><h2>Topic routing</h2><table><thead><tr><th>Filter</th><th>Nodes</th></tr></thead><tbody id="topics-body"></tbody></table></section>
+    <section id="acl" class="panel section hidden"><h2>MQTT ACL</h2><div class="grid"><div><h3>Roles</h3><pre id="acl-body">Loading…</pre><form id="role-form"><input id="role-name" placeholder="role name"><textarea id="role-rules" rows="5" placeholder='[{"topic_filter":"telemetry/#","actions":["subscribe"],"effect":"allow"}]'></textarea><button>Create/replace role</button></form></div><div><h3>Bindings</h3><pre id="bindings-body">Loading…</pre><form id="binding-form"><input id="binding-principal" placeholder="principal"><input id="binding-role" placeholder="role name"><button>Create binding</button></form></div></div></section>
+    <p id="error" class="error"></p>
+  </section>
+</main>
+<script>
+let csrf='';
+const $=id=>document.getElementById(id);
+async function api(path,options={}){options.headers=Object.assign({'Accept':'application/json'},options.headers||{});if(csrf)options.headers['X-CSRF-Token']=csrf;const r=await fetch(path,options);if(r.status===401)throw new Error('unauthenticated');if(!r.ok)throw new Error(await r.text());return r.json()}
+async function boot(){try{const m=await api('/api/me');csrf=m.csrf;$('who').textContent=m.user.email+' · '+m.user.role;$('login').classList.add('hidden');$('app').classList.remove('hidden');await refresh();setInterval(refresh,5000)}catch(e){if(e.message==='unauthenticated'){const m=await (await fetch('/auth/config')).json();if(m.mode==='local')$('login-form').classList.remove('hidden');else $('oidc').classList.remove('hidden')}else $('login-error').textContent=e.message}}
+async function refresh(){try{const [metrics,clients,routes,roles,bindings]=await Promise.all([api('/api/broker/api/metrics'),api('/api/broker/api/live/clients'),api('/api/broker/api/cluster/routes'),api('/api/broker/api/acl/roles'),api('/api/broker/api/acl/bindings')]);$('connections').textContent=metrics.active_connections??'–';$('msg-rate').textContent=(metrics.messages_per_second??0).toFixed(1);$('total-msg').textContent=metrics.total_messages??'–';$('clients-body').innerHTML=(clients||[]).map(c=>'<tr><td>'+esc(c.client_id)+'</td><td>'+esc(c.node_id)+'</td><td>'+esc(c.username)+'</td><td>'+esc(c.remote_addr)+'</td><td>'+esc((c.subscriptions||[]).join(', '))+'</td></tr>').join('')||'<tr><td colspan="5">No connected clients</td></tr>';$('topics-body').innerHTML=Object.entries(routes||{}).map(([t,n])=>'<tr><td>'+esc(t)+'</td><td>'+esc((n||[]).join(', '))+'</td></tr>').join('')||'<tr><td colspan="2">No active routes</td></tr>';$('acl-body').textContent=JSON.stringify(roles,null,2);$('bindings-body').textContent=JSON.stringify(bindings,null,2)}catch(e){$('error').textContent=e.message}}
+function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}
+$('login-form').addEventListener('submit',async e=>{e.preventDefault();try{const r=await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('email').value,password:$('password').value})});if(!r.ok)throw new Error('invalid credentials');location.reload()}catch(x){$('login-error').textContent=x.message}});
+$('role-form').addEventListener('submit',async e=>{e.preventDefault();try{const rules=JSON.parse($('role-rules').value||'[]');await api('/api/broker/api/acl/roles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('role-name').value,rules})});await refresh()}catch(x){$('error').textContent=x.message}});$('binding-form').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/broker/api/acl/bindings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({principal:$('binding-principal').value,role_name:$('binding-role').value})});await refresh()}catch(x){$('error').textContent=x.message}});
+$('oidc').onclick=()=>location.href='/auth/login';$('logout').onclick=async()=>{await fetch('/auth/logout',{method:'POST',headers:{'X-CSRF-Token':csrf}});location.reload()};document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.section').forEach(x=>x.classList.add('hidden'));$(b.dataset.tab).classList.remove('hidden')});boot();
+</script>
+</body></html>

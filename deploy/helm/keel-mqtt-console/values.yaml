@@ -1,0 +1,64 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/keel-iot/keel-mqtt-console
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+broker:
+  managementURL: ""
+
+# Required. Valid values are local or oidc. The chart fails during rendering
+# when this is empty; the binary also validates it at startup.
+auth:
+  mode: ""
+
+database:
+  existingSecret: ""
+  existingSecretKey: database-url
+  url: ""
+
+session:
+  existingSecret: ""
+  existingSecretKey: session-secret
+  secret: ""
+  cookieSecure: true
+
+local:
+  bootstrapExistingSecret: ""
+  emailKey: email
+  passwordKey: password
+
+oidc:
+  issuerURL: ""
+  clientID: ""
+  existingSecret: ""
+  clientSecretKey: client-secret
+  clientSecret: ""
+  redirectURL: ""
+  groupsClaim: groups
+  roleMapping: ""
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: console.example.com
+  tls: []
+
+resources: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  readOnlyRootFilesystem: true
