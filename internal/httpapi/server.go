@@ -35,6 +35,7 @@ func (s *Server) Handler() http.Handler {
 	// Use an exact root pattern. With Go's method-aware ServeMux patterns,
 	// "GET /" conflicts with the method-agnostic /api/broker/ subtree.
 	mux.HandleFunc("GET /{$}", s.index)
+	mux.HandleFunc("GET /assets/keel-icon-square.svg", s.iconSquare)
 	mux.HandleFunc("GET /auth/login", s.login)
 	mux.HandleFunc("GET /auth/config", s.authConfig)
 	mux.HandleFunc("POST /auth/login", s.loginLocal)
@@ -60,6 +61,12 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) index(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write(web.Index)
+}
+
+func (s *Server) iconSquare(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	_, _ = w.Write(web.IconSquare)
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
