@@ -143,6 +143,9 @@ func (s *Server) proxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := strings.TrimPrefix(r.URL.Path, "/api/broker")
+	if r.URL.RawQuery != "" {
+		path += "?" + r.URL.RawQuery
+	}
 	if r.Method != http.MethodGet {
 		if !csrfOK(r) {
 			writeError(w, http.StatusForbidden, "csrf validation failed")

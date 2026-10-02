@@ -34,6 +34,7 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader) (*
 }
 
 func allowed(path, method string) bool {
+	path = strings.SplitN(path, "?", 2)[0]
 	reads := map[string]bool{
 		"/api/cluster/nodes": true, "/api/cluster/routes": true, "/api/cluster/sessions": true,
 		"/api/metrics": true, "/api/live/clients": true, "/api/acl/roles": true,

@@ -72,3 +72,21 @@ helm upgrade --install keel-mqtt-console deploy/helm/keel-mqtt-console \
 
 For production, put the database URL, session secret and OIDC client secret in
 Kubernetes Secrets. The chart intentionally has no insecure default auth mode.
+
+## Dashboard behavior
+
+The dashboard supports manual refresh and optional automatic refresh. The
+selected interval (5 seconds to 5 minutes) is stored in the browser and
+automatic refresh pauses while the tab is hidden. Client search and
+pagination are delegated to the broker management API so the browser does
+not need to load the whole connected-client fleet.
+
+The paginated client API accepts:
+
+```text
+GET /api/live/clients?page=1&page_size=50&search=device-1&node_id=edge-1
+```
+
+The broker metrics view exposes the latest message rate plus rolling 1-minute
+and 5-minute averages, persistent offline sessions, recent disconnects and
+recent drops observed in the broker data path.
