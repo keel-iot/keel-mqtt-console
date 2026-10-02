@@ -28,7 +28,10 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-type User struct{ Email, Role string }
+type User struct {
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
 
 type Authenticator struct {
 	cfg    config.Config
