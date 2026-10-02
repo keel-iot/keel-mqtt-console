@@ -293,7 +293,15 @@ func verifyPassword(password, encoded string) bool {
 }
 
 func (a *Authenticator) signState(nonce, verifier string) (string, error) {
-	payload, err := json.Marshal(map[string]string{"nonce": nonce, "verifier": verifier, "exp": fmt.Sprint(time.Now().Add(10 * time.Minute).Unix())})
+	payload, err := json.Marshal(struct {
+		Nonce    string `json:"nonce"`
+		Verifier string `json:"verifier"`
+		Exp      int64  `json:"exp"`
+	}{
+		Nonce:    nonce,
+		Verifier: verifier,
+		Exp:      time.Now().Add(10 * time.Minute).Unix(),
+	})
 	if err != nil {
 		return "", err
 	}

@@ -67,3 +67,18 @@ func TestStartOIDCRedirectsWithRequest(t *testing.T) {
 		t.Fatalf("unexpected redirect location: %s", recorder.Header().Get("Location"))
 	}
 }
+
+func TestOIDCStateRoundTrip(t *testing.T) {
+	a := &Authenticator{cfg: config.Config{SessionSecret: strings.Repeat("s", 32)}}
+	state, err := a.signState("nonce", "verifier")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonce, verifier, err := a.verifyState(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nonce != "nonce" || verifier != "verifier" {
+		t.Fatalf("unexpected state: nonce=%q verifier=%q", nonce, verifier)
+	}
+}
