@@ -87,6 +87,11 @@ The paginated client API accepts:
 GET /api/live/clients?page=1&page_size=50&search=device-1&node_id=edge-1
 ```
 
+The Sessions page combines live clients with the Redis-backed persistent
+session inventory. It supports `all`, `online` and `offline` status filters;
+the offline snapshot is refreshed by the gateway's session reconciler and is
+therefore intentionally eventually consistent.
+
 The broker metrics view exposes the latest message rate plus rolling 1-minute
 and 5-minute averages, persistent offline sessions, recent disconnects and
 recent drops observed in the broker data path.
