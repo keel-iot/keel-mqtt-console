@@ -92,6 +92,10 @@ session inventory. It supports `all`, `online` and `offline` status filters;
 the offline snapshot is refreshed by the gateway's session reconciler and is
 therefore intentionally eventually consistent.
 
+The Connected clients and Sessions pages can export the current filtered
+results as CSV. Connected-client exports use a fresh cluster snapshot, while
+session exports fetch all matching pages before creating the download.
+
 The broker metrics view exposes the latest message rate plus rolling 1-minute
 and 5-minute averages, persistent offline sessions, recent disconnects and
 recent drops observed in the broker data path.
